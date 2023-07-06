@@ -1,0 +1,67 @@
+version: '3.3'
+services:
+  tema3_broker:
+    image: eclipse-mosquitto:latest
+    ports:
+      - "1883:1883"
+    networks:
+      - adaptor_net
+      - broker_net
+    volumes:
+      - ./mosquitto.conf:/mosquitto/config/mosquitto.conf
+
+  tema3_adaptor:
+    depends_on:
+      - tema3_broker
+      - tema3_db
+    image: adaptor
+    networks:
+      - broker_net
+      - db_net
+      - adaptor_net
+    environment:
+      DEBUG_DATA_FLOW: "true"
+      DB_NAME: tema3_db
+      DB_ORG: sprc_org
+      DB_TOKEN: sprc_token
+
+  tema3_db:
+    image: influxdb:latest
+    volumes:
+      - db_data:/var/lib/influxdb2
+    networks:
+      - view_net
+      - db_net
+      - adaptor_net
+    environment:
+      DOCKER_INFLUXDB_INIT_MODE: setup
+      DOCKER_INFLUXDB_INIT_USERNAME: root
+      DOCKER_INFLUXDB_INIT_PASSWORD: sprc_password
+      DOCKER_INFLUXDB_INIT_ORG: sprc_org
+      DOCKER_INFLUXDB_INIT_BUCKET: tema3_db 
+      DOCKER_INFLUXDB_INIT_ADMIN_TOKEN: sprc_token
+
+  tema3_view:
+    image: grafana/grafana-oss:latest
+    ports:
+      - "80:3000"
+    networks:
+      - view_net
+      - db_net
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./grafana-config/:/etc/grafana/provisioning
+    environment:
+      GF_SECURITY_ADMIN_USER: asistent
+      GF_SECURITY_ADMIN_PASSWORD: grafanaSPRC2021
+
+
+volumes:
+  db_data: {}
+  grafana_data: {}
+
+networks:
+  broker_net: {}
+  adaptor_net: {}
+  view_net: {}
+  db_net: {}
